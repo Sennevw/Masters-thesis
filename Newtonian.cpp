@@ -24,7 +24,7 @@ int main(){
     const unsigned long size = 50;
     const int nparticles = 100000;
     const int radius = 5;
-    int iterations = 250;
+    int iterations = 1000;
     
     // initialize random seed
     mt19937 mt(random_device{}());
@@ -94,8 +94,6 @@ int main(){
                 }
             }
         }
-        
-        
     }
     // write data to file
     ofstream myfile;
