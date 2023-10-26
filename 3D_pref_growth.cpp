@@ -6,6 +6,8 @@
 #include <vector>
 #include <random>
 #include <chrono>
+#include <string>
+#include <algorithm>
 
 using namespace std;
 template <int N>
@@ -19,15 +21,22 @@ void clear_grid(array<array<array<int, N>, N>, N>& grid){
     }
 }
 
+void print_vector(vector<float> v){
+    for (int i = 0; i < int(v.size()); i++){
+        cout << float(v[i]) << " ";
+    }
+    cout << endl;
+}
+
 using namespace std;
 int main(){
     const unsigned long size = 50;
     const int nparticles = 100000;
-    const int radius = 5;
+    const int radius = 4;
     int iterations = 1000;
     
     // initialize random seed
-    mt19937 mt(random_device{}());
+    mt19937 mt(time(0));
 
     // generate grid
     array<array<array<int, size>, size>, size> grid;
@@ -54,7 +63,7 @@ int main(){
         }
         for (int i = 0; i < nparticles; i++){
             // place particle
-            grid[x_list[i]][y_list[i]][z_list[i]] = 1;
+            grid[x_list[i]][y_list[i]][z_list[i]] += 1;
             // run over box of radius around particle
             for (int j = -radius; j <= radius; j++){
                 for (int k = -radius; k <= radius; k++){
@@ -63,13 +72,8 @@ int main(){
                         if (j !=0 || k != 0 || l != 0){
                             // mod is used to make the box periodic
                             // if a particle is found in the box its chance is calculated and added to chance_list, its pointer is added to ptr_list
-
-                            // eventueel lookup table maken van alle mogelijke combinaties van massas en afstanden
-                            
-                            // Boom waarin we bijhouden waar welk deeltje staat per fractie van het totale volume
-
                             if (grid[(x_list[i]+j) % size][(y_list[i]+k) % size ][(z_list[i]+l) % size] != 0){
-                                chance_list.push_back(grid[(x_list[i]+j) % size][(y_list[i]+k) % size][(z_list[i]+l) % size] / (j*j + k*k + l*l));
+                                chance_list.push_back(grid[(x_list[i]+j) % size][(y_list[i]+k) % size][(z_list[i]+l) % size] / (pow(j, 2) + pow(l, 2) + pow(k,2)));
                                 ptr_list.push_back(&grid[(x_list[i]+j) % size][(y_list[i]+k) % size][(z_list[i]+l) % size]);
                             }
                         }
@@ -77,10 +81,17 @@ int main(){
                 }
             }
             // if there are particles in the box, a particle is chosen according to its chance and its size is increased by 1
-            if (!chance_list.empty()){
+            if (chance_list.size() == 1){
+                int* ptr = ptr_list[0];
+                *ptr += grid[x_list[i]][y_list[i]][z_list[i]];
+                grid[x_list[i]][y_list[i]][z_list[i]] = 0;
+                chance_list.clear();
+                ptr_list.clear();
+            }
+            else if (!chance_list.empty()){
                 discrete_distribution<int> dist(chance_list.begin(), chance_list.end());
                 int* ptr = ptr_list[dist(mt)];
-                *ptr += 1;
+                *ptr += grid[x_list[i]][y_list[i]][z_list[i]];
                 grid[x_list[i]][y_list[i]][z_list[i]] = 0;
                 chance_list.clear();
                 ptr_list.clear();
