@@ -30,9 +30,9 @@ void print_vector(vector<float> v){
 
 using namespace std;
 int main(){
-    const unsigned long size = 50;
+    const unsigned long size = 25;
     const int nparticles = 100000;
-    const int radius = 4;
+    const int radius = 5;
     int iterations = 1000;
     
     // initialize random seed
@@ -108,7 +108,7 @@ int main(){
     }
     // write data to file
     ofstream myfile;
-    myfile.open("3D_data.txt");
+    myfile.open("r"+to_string(radius) +'_'+to_string(nparticles/pow(size, 3))+".txt");
     myfile << iterations << " " << nparticles << " " << radius << endl;
     for (int i = 0; i < nparticles; i++){
         myfile << i << " " << total_size_list[i] << endl;
