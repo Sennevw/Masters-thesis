@@ -41,7 +41,7 @@ int main(){
     unsigned long nparticles = 0;
     const int max_particles = 100000; 
     const bool same_value = false;
-    const int radius = 4;
+    const int radius = 2;
     const int steps = 50000;
 
     mt19937 mt(time(0));
@@ -90,8 +90,10 @@ int main(){
                     for (int l = -radius; l <= radius; l++){
                         if (j !=0 || k != 0 || l != 0){
                             if (grid[(p->x + j) % size][(p->y + k) % size][(p->z + l) % size] != nullptr){
-                                ptr_list.push_back(grid[(p->x + j) % size][(p->y + k) % size][(p->z + l) % size]);
-                                chance_list.push_back((grid[(p->x + j) % size][(p->y + k) % size][(p->z + l) % size]->mass * p->mass)/(pow(j, 2) + pow(k, 2) + pow(l, 2)));
+                                if (sqrt(pow(j, 2) + pow(k, 2) + pow(l, 2)) <= radius) {
+                                    ptr_list.push_back(grid[(p->x + j) % size][(p->y + k) % size][(p->z + l) % size]);
+                                    chance_list.push_back((grid[(p->x + j) % size][(p->y + k) % size][(p->z + l) % size]->mass * p->mass)/(pow(j, 2) + pow(k, 2) + pow(l, 2)));
+                                }
                             }
                         }
                     }
@@ -139,7 +141,7 @@ int main(){
         }
     }
     ofstream myfile;
-    myfile.open("3D_data_PA.txt");
+    myfile.open("R" + to_string(radius)+"_PA_"+to_string(max_particles/pow(size, 3))+".txt");
     myfile << iterations << " " << nparticles << " " << radius << endl;
     for (int i = 0; i < max_particles; i++){
         myfile << i << " " << tot_size[i] << endl;

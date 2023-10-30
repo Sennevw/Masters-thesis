@@ -30,10 +30,10 @@ void print_vector(vector<float> v){
 
 using namespace std;
 int main(){
-    const unsigned long size = 25;
+    const unsigned long size = 50;
     const int nparticles = 100000;
-    const int radius = 5;
-    int iterations = 1000;
+    const float radius = 5;
+    int iterations = 500;
     
     // initialize random seed
     mt19937 mt(time(0));
@@ -73,8 +73,10 @@ int main(){
                             // mod is used to make the box periodic
                             // if a particle is found in the box its chance is calculated and added to chance_list, its pointer is added to ptr_list
                             if (grid[(x_list[i]+j) % size][(y_list[i]+k) % size ][(z_list[i]+l) % size] != 0){
-                                chance_list.push_back(grid[(x_list[i]+j) % size][(y_list[i]+k) % size][(z_list[i]+l) % size] / (pow(j, 2) + pow(l, 2) + pow(k,2)));
-                                ptr_list.push_back(&grid[(x_list[i]+j) % size][(y_list[i]+k) % size][(z_list[i]+l) % size]);
+                                if (sqrt(pow(j, 2) + pow(k, 2) + pow(l, 2)) <= radius) {
+                                    chance_list.push_back(grid[(x_list[i]+j) % size][(y_list[i]+k) % size][(z_list[i]+l) % size] / (pow(j, 2) + pow(l, 2) + pow(k,2)));
+                                    ptr_list.push_back(&grid[(x_list[i]+j) % size][(y_list[i]+k) % size][(z_list[i]+l) % size]);
+                                }
                             }
                         }
                     }
