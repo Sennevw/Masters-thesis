@@ -8,6 +8,7 @@
 #include <chrono>
 #include <string>
 #include <algorithm>
+#include <map>
 
 using namespace std;
 template <int N>
@@ -32,7 +33,7 @@ using namespace std;
 int main(){
     const unsigned long size = 50;
     const int nparticles = 100000;
-    const float radius = 5;
+    const double radius = 3;
     int iterations = 500;
     
     // initialize random seed
@@ -41,11 +42,12 @@ int main(){
     // generate grid
     array<array<array<int, size>, size>, size> grid;
     // list that will be used store the amount of particles of a certain size
-    array<int, nparticles> total_size_list;
+    map<int, int> total_size_list;
     // list that holds the chance of each particle near the last placed particle to be chosen
     vector<float> chance_list;
     // list that holds pointers to all particles near last placed particle
-    vector<int*> ptr_list;
+    //vector<int*> ptr_list;
+    vector<vector<int>> ptr_list2;
 
     // store random coordinates
     array<int, nparticles> x_list;
@@ -60,60 +62,59 @@ int main(){
             x_list[i] = mt() % size;
             y_list[i] = mt() % size;
             z_list[i] = mt() % size;
-        }
+        } 
         for (int i = 0; i < nparticles; i++){
             // place particle
-            grid[x_list[i]][y_list[i]][z_list[i]] += 1;
+            if (grid[x_list[i]][y_list[i]][z_list[i]] != 0) {
+                grid[x_list[i]][y_list[i]][z_list[i]] += 1;
+                continue;
+            }
             // run over box of radius around particle
             for (int j = -radius; j <= radius; j++){
                 for (int k = -radius; k <= radius; k++){
                     for (int l = -radius; l <= radius; l++){
                         // do not look at particle itself
-                        if (j !=0 || k != 0 || l != 0){
                             // mod is used to make the box periodic
                             // if a particle is found in the box its chance is calculated and added to chance_list, its pointer is added to ptr_list
-                            if (grid[(x_list[i]+j) % size][(y_list[i]+k) % size ][(z_list[i]+l) % size] != 0){
-                                if (sqrt(pow(j, 2) + pow(k, 2) + pow(l, 2)) <= radius) {
-                                    chance_list.push_back(grid[(x_list[i]+j) % size][(y_list[i]+k) % size][(z_list[i]+l) % size] / (pow(j, 2) + pow(l, 2) + pow(k,2)));
-                                    ptr_list.push_back(&grid[(x_list[i]+j) % size][(y_list[i]+k) % size][(z_list[i]+l) % size]);
-                                }
+                        if (grid[(x_list[i]+j) % size][(y_list[i]+k) % size ][(z_list[i]+l) % size] != 0){
+                            if (sqrt(pow(j, 2) + pow(k, 2) + pow(l, 2)) <= radius) {
+                                chance_list.push_back(grid[(x_list[i]+j) % int(size)][(y_list[i]+k) % int(size)][(z_list[i]+l) % int(size)] / double((pow(j, 2) + pow(l, 2) + pow(k, 2))));
+                                ptr_list2.push_back({(x_list[i]+j) % int(size), (y_list[i]+k) % int(size), (z_list[i]+l) % int(size)});
                             }
                         }
                     }
                 }
             }
             // if there are particles in the box, a particle is chosen according to its chance and its size is increased by 1
-            if (chance_list.size() == 1){
-                int* ptr = ptr_list[0];
-                *ptr += grid[x_list[i]][y_list[i]][z_list[i]];
-                grid[x_list[i]][y_list[i]][z_list[i]] = 0;
-                chance_list.clear();
-                ptr_list.clear();
+            if (chance_list.empty()) {
+                grid[x_list[i]][y_list[i]][z_list[i]] += 1;
             }
-            else if (!chance_list.empty()){
+            else if (chance_list.size() != 0){
                 discrete_distribution<int> dist(chance_list.begin(), chance_list.end());
-                int* ptr = ptr_list[dist(mt)];
-                *ptr += grid[x_list[i]][y_list[i]][z_list[i]];
-                grid[x_list[i]][y_list[i]][z_list[i]] = 0;
+                vector<int> coord = ptr_list2[dist(mt)];
+                grid[coord[0]][coord[1]][coord[2]] += 1;
                 chance_list.clear();
-                ptr_list.clear();
+                ptr_list2.clear();
             }
         }
         // count the amount of particles of each size
         for (int i = 0; i < int(size); i++){
             for (int j = 0; j < int(size); j++){
                 for (int k = 0; k < int(size); k++){
-                    total_size_list[grid[i][j][k]] += 1;
+                    ++total_size_list[grid[i][j][k]];
                 }
             }
         }
-    }
+    }   
     // write data to file
+    cout << "r"+to_string(radius) +'_'+to_string(nparticles/pow(size, 3))+".txt" << endl;
+
     ofstream myfile;
     myfile.open("r"+to_string(radius) +'_'+to_string(nparticles/pow(size, 3))+".txt");
     myfile << iterations << " " << nparticles << " " << radius << endl;
-    for (int i = 0; i < nparticles; i++){
-        myfile << i << " " << total_size_list[i] << endl;
+    for (auto const& x : total_size_list){
+        myfile << x.first << " " << x.second << endl;
     }
-    return 1;
+    myfile.close();
+    return 0;
 }
