@@ -6,6 +6,7 @@
 #include <vector>
 #include <random>
 #include <chrono>
+#include <map>
 
 using namespace std;
 class Particle{
@@ -14,13 +15,11 @@ class Particle{
         int y;
         int z;
         int mass;
-        Particle* part_of;
         Particle(int x, int y, int z, int mass){
             this->x = x;
             this->y = y;
             this->z = z;
             this->mass = mass;
-            this->part_of = nullptr;
         }
 };
 
@@ -37,11 +36,10 @@ void clear_grid(array<array<array<Particle*, N>, N>, N>& grid){
 
 int main(){
     const unsigned long size = 50;
-    const int iterations = 500;
+    const int iterations = 50;
     unsigned long nparticles = 0;
     const int max_particles = 100000; 
-    const bool same_value = false;
-    const int radius = 2;
+    const int radius = 4;
     const int steps = 50000;
 
     mt19937 mt(time(0));
@@ -52,7 +50,8 @@ int main(){
     vector<float> chance_list;
     vector<Particle*> ptr_list;
 
-    array<int, max_particles> tot_size;
+    map<int, int> tot_size;
+    int count = 0;
 
     for (int i = 0; i < max_particles; i++){
         Particle* p = new Particle(0, 0 , 0, 1);
@@ -69,7 +68,7 @@ int main(){
             p->z = mt() % size;
             p->mass = 1;
             if (grid[p->x][p->y][p->z] != nullptr){
-                grid[p->x][p->y][p->z]->mass += 1;
+                grid[p->x][p->y][p->z]->mass ++;
                 p->mass = 0;
             }
             else{
@@ -78,73 +77,52 @@ int main(){
                 nparticles++;
             }
         }
+        cout << nparticles << endl;
 
         for (int i = 0; i < steps; i++){
-            int random = mt() % nparticles;
+            int random = mt() % (used_list.size() - 1);
             Particle* p = used_list[random];
-            if (p->part_of != nullptr) {
-                p = p->part_of;
-            }
             for (int j = -radius; j <= radius; j++){
                 for (int k = -radius; k <= radius; k++){
                     for (int l = -radius; l <= radius; l++){
-                        if (j !=0 || k != 0 || l != 0){
-                            if (grid[(p->x + j) % size][(p->y + k) % size][(p->z + l) % size] != nullptr){
-                                if (sqrt(pow(j, 2) + pow(k, 2) + pow(l, 2)) <= radius) {
-                                    ptr_list.push_back(grid[(p->x + j) % size][(p->y + k) % size][(p->z + l) % size]);
-                                    chance_list.push_back((grid[(p->x + j) % size][(p->y + k) % size][(p->z + l) % size]->mass * p->mass)/(pow(j, 2) + pow(k, 2) + pow(l, 2)));
-                                }
-                            }
+                        if (j == 0 && k == 0 && l == 0) continue;
+                        if (grid[(p->x + j) % size][(p->y + k) % size][(p->z + l) % size] == nullptr) continue;
+                        if (sqrt(pow(j, 2) + pow(k, 2) + pow(l, 2)) <= radius) {
+                            chance_list.push_back((grid[(p->x + j) % size][(p->y + k) % size][(p->z + l) % size]->mass)/(pow(j, 2) + pow(k, 2) + pow(l, 2)));
+                            ptr_list.push_back(grid[(p->x + j) % size][(p->y + k) % size][(p->z + l) % size]);
+                            
                         }
+                        
                     }
                 }
             }
-            if (ptr_list.size() == 1) {
-                Particle* ptr = ptr_list[0];
-                ptr->mass += p->mass;
-                p->mass = 0;
-                grid[p->x][p->y][p->z] = nullptr;
-                if (same_value){
-                    p->part_of = ptr;
-                    used_list[random] = ptr;
-                }
-                if (!same_value){
-                    swap(used_list[random], used_list.back());
-                    used_list.pop_back();
-                    nparticles--;
-                }
-                chance_list.clear();
-                ptr_list.clear();
-            }
-            else if (ptr_list.size() != 0) {
+            if (chance_list.size() > 0) {
                 discrete_distribution<int> dist(chance_list.begin(), chance_list.end());
                 Particle* ptr = ptr_list[dist(mt)];
-                ptr->mass += p->mass;
-                p->mass = 0;
-                grid[p->x][p->y][p->z] = nullptr;
-                if (same_value){
-                    p->part_of = ptr;
-                    used_list[random] = ptr;
-                }
-                if (!same_value){
+                ptr->mass ++;
+                p->mass --;
+                if (p->mass == 0) {
+                    grid[p->x][p->y][p->z] = nullptr;
                     swap(used_list[random], used_list.back());
                     used_list.pop_back();
-                    nparticles--;
+                    nparticles --;
                 }
                 chance_list.clear();
                 ptr_list.clear();
             }
         }
         for (int i = 0; i < max_particles; i++){
-            tot_size[tot_part_list[i]->mass] += 1;
-            tot_part_list[i]->mass = 0;
+            ++tot_size[tot_part_list[i]->mass];
         }
+        nparticles = 0;
+        
     }
     ofstream myfile;
     myfile.open("R" + to_string(radius)+"_PA_"+to_string(max_particles/pow(size, 3))+".txt");
     myfile << iterations << " " << nparticles << " " << radius << endl;
-    for (int i = 0; i < max_particles; i++){
-        myfile << i << " " << tot_size[i] << endl;
+    for (auto const& x : tot_size){
+        myfile << x.first << " " << x.second << endl;
     }
+    myfile.close();
     return 1;
 }

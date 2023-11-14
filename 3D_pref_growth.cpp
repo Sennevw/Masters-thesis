@@ -74,6 +74,7 @@ int main(){
                 for (int k = -radius; k <= radius; k++){
                     for (int l = -radius; l <= radius; l++){
                         // do not look at particle itself
+                        if (j == 0 && k == 0 && l == 0) continue;
                             // mod is used to make the box periodic
                             // if a particle is found in the box its chance is calculated and added to chance_list, its pointer is added to ptr_list
                         if (grid[(x_list[i]+j) % size][(y_list[i]+k) % size ][(z_list[i]+l) % size] != 0){
