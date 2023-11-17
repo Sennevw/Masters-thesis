@@ -403,8 +403,9 @@ void pref_growth(int npoints, int size, int dim, float radius, int iterations, m
     vector<vector<T>> coord_list(npoints, vector<T>(dim));
 
     for (int iteration = 0; iteration < iterations; iteration++) {
-        create_random_float<T, Point>(coord_list, npoints, mt, size);        
-        cout << iteration << endl;
+        create_random_int<T, Point>(coord_list, npoints, mt, size);  
+        cout << '\r' << string(30, ' ') << '\r' << flush;     
+        cout << iteration << flush;
         for (int i = 0; i < npoints; i++) {
             points.push_back(Point<T>(coord_list[i]));
             if (tree.radius_search(points.back(), radius, indices, true)) {
@@ -442,7 +443,8 @@ void pref_attach(int npoints, int size, int dim, float radius, int iterations, m
     
     for (int iteration = 0; iteration < iterations; iteration++) {
         it = mass_list.begin();
-        cout << iteration << endl;
+        cout << '\r' << string(30, ' ') << '\r' << flush;
+        cout << iteration << flush;
         create_random_int<T, Point>(coord_list, npoints, mt, size);
         for (int i = 0; i < npoints; i++){
             points.push_back(Point<T>(coord_list[i]));
@@ -506,42 +508,54 @@ void pref_attach2(int npoints, int size, int dim, float radius, int iterations, 
     tree.build(points);
     tree.find_neighbours(indices, neighbour_list, radius);
     tree.clear();
-    for (int step = 0; step <= time; step++) {
-        int rand_idx = static_cast<int>(mt() % static_cast<unsigned int>(points.size() - 1));
-        while(points[rand_idx].mass == 0) rand_idx = static_cast<int>(mt() % static_cast<unsigned int>(points.size() - 1));
-        Point<T>& point = points[rand_idx];
-        for (int i = 0; i < neighbour_list[rand_idx].size(); i++){
-            if (neighbour_list[rand_idx][i].point.mass != 0) {
-                weights.push_back(neighbour_list[rand_idx][i].point.mass/ pow(neighbour_list[rand_idx][i].distance, 2));
-            }
-        }
-        discrete_distribution<int> dist(weights.begin(), weights.end());
-        switch (mode) {
-        case true:
-            point.mass--;
-            points[dist(mt)].mass ++;
-            break;
-        
-        case false:
-            points[dist(mt)].mass += point.mass;
-            point.mass = 0;
-            break;
-        }
-        weights.clear();
-        cout << "\r" << string(30, ' ') << flush;
-        cout << step/float(time) * 100 << "%" << flush;
-        if (step == time/2){
-            for (int i = 0; i < int(points.size()); i++) {
-                if (points[i].mass == 0) {
-                    swap(points[i], points.back());
-                    points.pop_back();
-                    neighbour_list[i].clear();
+    for (int iteration = 0; iteration < iterations; iteration++) {
+        for (int step = 0; step <= time; step++) {
+            int rand_idx = static_cast<int>(mt() % static_cast<unsigned int>(points.size() - 1));
+            while(points[rand_idx].mass == 0) rand_idx = static_cast<int>(mt() % static_cast<unsigned int>(points.size() - 1));
+            Point<T>& point = points[rand_idx];
+            for (int i = 0; i < neighbour_list[rand_idx].size(); i++){
+                if (neighbour_list[rand_idx][i].point.mass != 0) {
+                    weights.push_back(neighbour_list[rand_idx][i].point.mass/ pow(neighbour_list[rand_idx][i].distance, 2));
                 }
             }
-            tree.build(points);
-            tree.find_neighbours(indices, neighbour_list, radius);
-            tree.clear();
+            discrete_distribution<int> dist(weights.begin(), weights.end());
+            switch (mode) {
+            case true:
+                point.mass--;
+                points[dist(mt)].mass ++;
+                break;
+            
+            case false:
+                points[dist(mt)].mass += point.mass;
+                point.mass = 0;
+                break;
+            }
+            weights.clear();
+            cout << "\r" << string(30, ' ') << flush;
+            cout << step/float(time) * 100 << "%" << flush;
+            if (step == time/2){
+                for (int i = 0; i < int(points.size()); i++) {
+                    if (points[i].mass == 0) {
+                        swap(points[i], points.back());
+                        points.pop_back();
+                        neighbour_list[i].clear();
+                    }
+                }
+                tree.build(points);
+                tree.find_neighbours(indices, neighbour_list, radius);
+                tree.clear();
+            }
+            if (step != 0  && (step % (time/10)) == 0) {
+                for (int i = 0; i < points.size(); i++) {
+                    (*it)[points[i].mass] ++;
+                }
+                it++;
+            }
         }
+    }
+    for (int i = 0; i < int(mass_list.size()); i++) {
+        string name = "r" + to_string(int(radius)) + "_" + to_string(int(dim)) + "D_tree_" +to_string(i * time/10) +'_'+to_string(npoints/pow(size, dim)) + '_' + to_string(mode) +".txt";
+        tree.output(name, mass_list[i], iterations, npoints, radius, size, dim, true);
     }
 }
 
@@ -551,12 +565,13 @@ int main(){
     const int npoints = 100000;
     const int time = 500000;
     const int dim = 3;
-    float radius = 5;
-    int iterations = 500;
+    float radius = 6;
+    int iterations = 3;
     bool mode = true;
     
 
     if (dim != Point<int>::Dim) throw runtime_error("Dimension mismatch");
-    pref_attach2<int>(npoints, size, dim, radius, iterations, mt, time, mode);
+    //pref_growth<int>(npoints, size, dim, radius, iterations, mt);
+    pref_attach<int>(npoints, size, dim, radius, iterations, mt , time, mode);
     return 1;
 };

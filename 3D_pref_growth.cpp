@@ -31,9 +31,9 @@ void print_vector(vector<float> v){
 
 using namespace std;
 int main(){
-    const unsigned long size = 50;
+    const int size = 50;
     const int nparticles = 100000;
-    const double radius = 3;
+    const double radius = 5;
     int iterations = 500;
     
     // initialize random seed
@@ -59,9 +59,9 @@ int main(){
         clear_grid<size>(grid);
         //generate random coordinates
         for (int i = 0; i < nparticles; i++){
-            x_list[i] = mt() % size;
-            y_list[i] = mt() % size;
-            z_list[i] = mt() % size;
+            x_list[i] = static_cast<int>(mt() % static_cast<unsigned int>(size));
+            y_list[i] = static_cast<int>(mt() % static_cast<unsigned int>(size));
+            z_list[i] = static_cast<int>(mt() % static_cast<unsigned int>(size));
         } 
         for (int i = 0; i < nparticles; i++){
             // place particle

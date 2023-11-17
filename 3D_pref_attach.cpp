@@ -35,12 +35,12 @@ void clear_grid(array<array<array<Particle*, N>, N>, N>& grid){
 }
 
 int main(){
-    const unsigned long size = 50;
-    const int iterations = 50;
+    const int size = 50;
+    const int iterations = 10;
     unsigned long nparticles = 0;
     const int max_particles = 100000; 
-    const int radius = 4;
-    const int steps = 50000;
+    const int radius = 6;
+    const int steps = 40000;
 
     mt19937 mt(time(0));
 
@@ -63,9 +63,9 @@ int main(){
         clear_grid<size>(grid);
         for (int i = 0; i < max_particles; i++){
             Particle* p = tot_part_list[i];
-            p->x = mt() % size;
-            p->y = mt() % size;
-            p->z = mt() % size;
+            p->x = static_cast<int>(mt() % static_cast<unsigned int>(size));
+            p->y = static_cast<int>(mt() % static_cast<unsigned int>(size));
+            p->z = static_cast<int>(mt() % static_cast<unsigned int>(size));
             p->mass = 1;
             if (grid[p->x][p->y][p->z] != nullptr){
                 grid[p->x][p->y][p->z]->mass ++;
