@@ -36,11 +36,11 @@ void clear_grid(array<array<array<Particle*, N>, N>, N>& grid){
 
 int main(){
     const int size = 50;
-    const int iterations = 10;
+    const int iterations = 3;
     unsigned long nparticles = 0;
     const int max_particles = 100000; 
     const int radius = 6;
-    const int steps = 40000;
+    const int steps = 100000;
 
     mt19937 mt(time(0));
 
@@ -49,6 +49,8 @@ int main(){
     vector<Particle*> used_list;
     vector<float> chance_list;
     vector<Particle*> ptr_list;
+
+    uniform_int_distribution<int> dist_int(0, size - 1);
 
     map<int, int> tot_size;
     int count = 0;
@@ -60,12 +62,13 @@ int main(){
 
     for(int iteration = 0; iteration < iterations; iteration++){
         cout << "\0033c \r " << iteration << endl;
+        
         clear_grid<size>(grid);
         for (int i = 0; i < max_particles; i++){
             Particle* p = tot_part_list[i];
-            p->x = static_cast<int>(mt() % static_cast<unsigned int>(size));
-            p->y = static_cast<int>(mt() % static_cast<unsigned int>(size));
-            p->z = static_cast<int>(mt() % static_cast<unsigned int>(size));
+            p->x = dist_int(mt);
+            p->y = dist_int(mt);
+            p->z = dist_int(mt);
             p->mass = 1;
             if (grid[p->x][p->y][p->z] != nullptr){
                 grid[p->x][p->y][p->z]->mass ++;
@@ -79,8 +82,8 @@ int main(){
         }
         cout << nparticles << endl;
 
-        for (int i = 0; i < steps; i++){
-            int random = mt() % (used_list.size() - 1);
+        for (int i = 0; i <= steps; i++){
+            int random = static_cast<int>(mt() % static_cast<unsigned int>((used_list.size() - 1)));
             Particle* p = used_list[random];
             for (int j = -radius; j <= radius; j++){
                 for (int k = -radius; k <= radius; k++){
@@ -88,7 +91,7 @@ int main(){
                         if (j == 0 && k == 0 && l == 0) continue;
                         if (grid[(p->x + j) % size][(p->y + k) % size][(p->z + l) % size] == nullptr) continue;
                         if (sqrt(pow(j, 2) + pow(k, 2) + pow(l, 2)) <= radius) {
-                            chance_list.push_back((grid[(p->x + j) % size][(p->y + k) % size][(p->z + l) % size]->mass)/(pow(j, 2) + pow(k, 2) + pow(l, 2)));
+                            chance_list.push_back((grid[(p->x + j) % size][(p->y + k) % size][(p->z + l) % size]->mass)/double(pow(j, 2) + pow(k, 2) + pow(l, 2)));
                             ptr_list.push_back(grid[(p->x + j) % size][(p->y + k) % size][(p->z + l) % size]);
                             
                         }
@@ -115,11 +118,12 @@ int main(){
             ++tot_size[tot_part_list[i]->mass];
         }
         nparticles = 0;
+        used_list.clear();
         
     }
     ofstream myfile;
-    myfile.open("R" + to_string(radius)+"_PA_"+to_string(max_particles/pow(size, 3))+".txt");
-    myfile << iterations << " " << nparticles << " " << radius << endl;
+    myfile.open("R" + to_string(radius)+"_PA_"+to_string(max_particles/pow(size, 3))+ '_' + to_string(steps) + ".txt");
+    myfile << iterations << " " << nparticles << " " << radius << " " << time << endl;
     for (auto const& x : tot_size){
         myfile << x.first << " " << x.second << endl;
     }

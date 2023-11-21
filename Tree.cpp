@@ -4,7 +4,6 @@
 #include <iostream>
 #include <fstream>
 #include <array>
-#include <iostream>
 #include <map>
 #include <iomanip>
 #include <list>
@@ -213,6 +212,10 @@ class Tree{
                     radius_search_recurs(root_, virtual_center, radius, indices, flip, false);
                 }
             }
+            if (radius >= limit/2) {
+                sort(indices.begin(), indices.end());
+                indices.erase(unique(indices.begin(), indices.end()), indices.end());
+            }
             return flip;
         };
            
@@ -278,16 +281,20 @@ class Tree{
             iterate_tree(node->right, mass_list);
         }
 
-        void find_neighbours(vector<int>& indices, vector<vector<Neighbour<T, Point>>>& neighbour_list, float radius){
-            for (int i = 0; i < (*points_).size(); i++){
+        void find_neighbours(vector<vector<Neighbour<T, Point>>>& neighbour_list, float radius){
+            vector<int> indices;
+            for (int i = 0; i < int((*points_).size()); i++){
                 radius_search((*points_)[i], radius, indices, false);
-                for (int j = 0; j < indices.size(); j++){
+                for (int j = 0; j < int(indices.size()); j++){
                     neighbour_list[i].push_back(Neighbour<T, Point>((*points_)[indices[j]], circ_distance((*points_)[i], (*points_)[indices[j]])));
                 }
-                cout << "\r" << string(30, ' ') << flush;
-                cout << i/float((*points_).size()) * 100 << "%" << flush;
+                if (i % 100 == 0) {
+                    cout << "\r" << string(30, ' ') << flush;
+                    cout << i/float((*points_).size()) * 100 << "%" << flush;
+                }
                 indices.clear();
             }
+            cout << endl;
             cout << "\r" << string(30, ' ') << flush;
             cout << "\r" <<"Neighbours found" << endl;
         }
@@ -363,9 +370,10 @@ void create_random_float(vector<vector<T>>& coord_list, int npoints, mt19937& mt
 
 template <class T, template<typename> class Point>
 void create_random_int(vector<vector<T>>& coord_list, int npoints, mt19937& mt, int size){
+            uniform_int_distribution<int> dist_int(0, size - 1);
             for (int i = 0; i < npoints; i++) {
                 for (int j = 0; j < Point<T>::Dim; j++){
-                    coord_list[i][j] = static_cast<int>(mt() % static_cast<unsigned int>(size));
+                    coord_list[i][j] = dist_int(mt);
                 }
             }
         }
@@ -379,16 +387,19 @@ void gen_init_cond(vector<Point<T>>& points, vector<vector<int>>& coord_list, in
             for (int i = 0; i < npoints; i++){
                 while(it2 != coord_list.end() - 1 && *it2 == *it1) it2++;
                 points.push_back(Point<T>(*it1));
-                points.back().mass += distance(it1, it2)-1;
+                points.back().mass = distance(it1, it2);
                 
                 if (it2 != coord_list.end() - 1) {
                     it1 = it2;
                     it2 = it2 + 1;
                 }
                 else if (it2 == coord_list.end() - 1) {
+                    if (*it2 == *it1) points.back().mass += 1;
+                    else points.push_back(Point<T>(*it2));
                     break;
                 }
             }
+            cout << endl;
             cout << "Points found" << endl;
         }
 
@@ -445,18 +456,19 @@ void pref_attach(int npoints, int size, int dim, float radius, int iterations, m
         it = mass_list.begin();
         cout << '\r' << string(30, ' ') << '\r' << flush;
         cout << iteration << flush;
-        create_random_int<T, Point>(coord_list, npoints, mt, size);
-        for (int i = 0; i < npoints; i++){
-            points.push_back(Point<T>(coord_list[i]));
-            tree.insert(points.back());
-        }
-        cout << points.size() << endl;
+        gen_init_cond<T, Point>(points, coord_list, npoints, mt, size);
+        tree.build(points);
         for (int steps = 0; steps <= time; steps++) {
             rand_idx = static_cast<int>(mt() % static_cast<unsigned int>(points.size() - 1));
             while(points[rand_idx].mass == 0) rand_idx = static_cast<int>(mt() % static_cast<unsigned int>(points.size() - 1));
             Point<T>& point = points[rand_idx];
             tree.radius_search(point, radius, indices, false);
             if (indices.size() > 0) tree.gen_rand_point_attach(indices, weights, point, mt, mode);
+            
+            if (steps != 0  && (steps % (time/10)) == 0) {
+                tree.iterate_tree(tree.root_, *it);
+                it++;
+            }
             if (counter == 1000) {
                 tree.clear();
                 for (int i = 0; i < int(points.size()); i++) {
@@ -468,11 +480,7 @@ void pref_attach(int npoints, int size, int dim, float radius, int iterations, m
                 tree.build(points);
                 counter = 0;
             }
-            if (steps != 0  && (steps % (time/10)) == 0) {
-                tree.iterate_tree(tree.root_, *it);
-                it++;
-            }
-            cout << "\r" << string(30, ' ') << flush;
+            cout << "\r" << string(30, ' ') << '\r' << flush;
             cout << "\r" << steps/float(time) * 100 << "%" << flush;
         }
         indices.clear();
@@ -480,20 +488,18 @@ void pref_attach(int npoints, int size, int dim, float radius, int iterations, m
         points.clear();
         tree.clear();
         tree.points_ = &points;
-        
     }
     for (int i = 0; i < int(mass_list.size()); i++) {
-        string name = "r" + to_string(int(radius)) + "_" + to_string(int(dim)) + "D_tree_" +to_string(i * time/10) +'_'+to_string(npoints/pow(size, dim)) + '_' + to_string(mode) +".txt";
+        string name = "r" + to_string(int(radius)) + "_" + to_string(int(dim)) + "D_tree_" +to_string((i+1) * time/10) +'_'+to_string(npoints/pow(size, dim)) + '_' + to_string(mode) +".txt";
         tree.output(name, mass_list[i], iterations, npoints, radius, size, dim, true);
     }
-    
 };
 
 template <typename T>
 void pref_attach2(int npoints, int size, int dim, float radius, int iterations, mt19937 &mt, int time, bool mode) {
     int measurements = 10;
     vector<vector<int>> coord_list(npoints, vector<int>(Point<T>::Dim));
-    vector<int> indices;
+    
     vector<float> weights;
     vector<map<int, int>> mass_list(measurements);
     vector<map<int, int>>::iterator it = mass_list.begin();
@@ -504,70 +510,74 @@ void pref_attach2(int npoints, int size, int dim, float radius, int iterations, 
     points.reserve(npoints);
 
     Tree<int, Point> tree(points, float(size));
-    gen_init_cond<T, Point>(points, coord_list, npoints, mt, size);
-    tree.build(points);
-    tree.find_neighbours(indices, neighbour_list, radius);
-    tree.clear();
     for (int iteration = 0; iteration < iterations; iteration++) {
+        it = mass_list.begin();
+        gen_init_cond<T, Point>(points, coord_list, npoints, mt, size);
+        tree.build(points);
+        tree.find_neighbours(neighbour_list, radius);
+        tree.clear();
         for (int step = 0; step <= time; step++) {
             int rand_idx = static_cast<int>(mt() % static_cast<unsigned int>(points.size() - 1));
-            while(points[rand_idx].mass == 0) rand_idx = static_cast<int>(mt() % static_cast<unsigned int>(points.size() - 1));
+            while(points[rand_idx].mass == 0) {rand_idx = static_cast<int>(mt() % static_cast<unsigned int>(points.size() - 1));}
             Point<T>& point = points[rand_idx];
-            for (int i = 0; i < neighbour_list[rand_idx].size(); i++){
-                if (neighbour_list[rand_idx][i].point.mass != 0) {
-                    weights.push_back(neighbour_list[rand_idx][i].point.mass/ pow(neighbour_list[rand_idx][i].distance, 2));
-                }
+            for (int i = 0; i < int(neighbour_list[rand_idx].size()); i++){
+                weights.push_back(neighbour_list[rand_idx][i].point.mass/ pow(neighbour_list[rand_idx][i].distance, 2));
             }
             discrete_distribution<int> dist(weights.begin(), weights.end());
             switch (mode) {
             case true:
                 point.mass--;
-                points[dist(mt)].mass ++;
+                neighbour_list[rand_idx][dist(mt)].point.mass ++;
                 break;
             
             case false:
-                points[dist(mt)].mass += point.mass;
+                neighbour_list[rand_idx][dist(mt)].point.mass += point.mass;
                 point.mass = 0;
                 break;
             }
             weights.clear();
-            cout << "\r" << string(30, ' ') << flush;
-            cout << step/float(time) * 100 << "%" << flush;
+            if (step % 100 == 0) {
+                cout << "\r" << string(30, ' ') << flush;
+                cout << step/float(time) * 100 << "%" << flush;
+            }
             if (step == time/2){
                 for (int i = 0; i < int(points.size()); i++) {
                     if (points[i].mass == 0) {
                         swap(points[i], points.back());
                         points.pop_back();
-                        neighbour_list[i].clear();
                     }
+                    neighbour_list[i].clear();
                 }
                 tree.build(points);
-                tree.find_neighbours(indices, neighbour_list, radius);
+                tree.find_neighbours(neighbour_list, radius);
                 tree.clear();
+                cout << endl;
             }
             if (step != 0  && (step % (time/10)) == 0) {
-                for (int i = 0; i < points.size(); i++) {
+                for (int i = 0; i < int(points.size()); i++) {
                     (*it)[points[i].mass] ++;
                 }
                 it++;
             }
         }
+        points.clear();
+
     }
     for (int i = 0; i < int(mass_list.size()); i++) {
-        string name = "r" + to_string(int(radius)) + "_" + to_string(int(dim)) + "D_tree_" +to_string(i * time/10) +'_'+to_string(npoints/pow(size, dim)) + '_' + to_string(mode) +".txt";
+        string name = "r" + to_string(int(radius)) + "_" + to_string(int(dim)) + "D_tree_" +to_string((i+1) * time/10) +'_'+to_string(npoints/pow(size, dim)) + '_' + to_string(mode) +".txt";
         tree.output(name, mass_list[i], iterations, npoints, radius, size, dim, true);
     }
 }
 
 int main(){
     mt19937 mt(time(0));
-    const unsigned long size = 50;
+    const unsigned long size = 100;
     const int npoints = 100000;
-    const int time = 500000;
+    const int time = 100000;
     const int dim = 3;
-    float radius = 6;
-    int iterations = 3;
-    bool mode = true;
+    float radius = 10;
+    int iterations = 1;
+    bool mode = false;
     
 
     if (dim != Point<int>::Dim) throw runtime_error("Dimension mismatch");
