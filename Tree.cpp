@@ -275,11 +275,14 @@ class Tree{
             return; 
         }
 
-        void iterate_tree(Node* node, map<int, int>& mass_list){
+        void iterate_tree(Node* node, map<int, int>& mass_list, int* ammount_clusters=nullptr){
             if (node == nullptr) return;
             ++mass_list[(*points_)[node->idx].mass];
-            iterate_tree(node->left, mass_list);
-            iterate_tree(node->right, mass_list);
+            if (ammount_clusters != nullptr && (*points_)[node->idx].mass != 0){
+                ++*ammount_clusters;
+            }
+            iterate_tree(node->left, mass_list, ammount_clusters);
+            iterate_tree(node->right, mass_list, ammount_clusters);
         }
 
         void find_neighbours(vector<vector<Neighbour<T, Point>>>& neighbour_list, float radius){
@@ -341,6 +344,13 @@ class Tree{
             for (const auto& n: mass_list)
                 myfile << n.first << " " << n.second << endl;
             myfile.close();
+        }
+    
+        int choose_neigh(vector<int> indices, mt19937& mt, int count = 0){
+            if (count > static_cast<int>(indices.size())) return -1;
+            uniform_int_distribution<int> dist(0, indices.size() - 1);
+            if ((*points_)[indices[dist(mt)]].mass == 0) return choose_neigh(indices, mt, count + 1);
+            else return indices[dist(mt)];
         }
 };
 
@@ -434,7 +444,7 @@ void gen_rand_nmb(vector<Point<T>>& points, int& rand_idx, mt19937& mt, bool& mo
 }
 
 template <typename T>
-void pref_growth(int npoints, int size, int dim, float radius, int iterations, mt19937 &mt, float choice1 = 0, float choice2 = 0){
+void pref_growth(int npoints, int size, int dim, float radius, int iterations, mt19937 &mt, float choice1 = 0, float choice2 = 0, bool mode = false){
     vector<Point<T>> points;
     points.reserve(npoints);
     vector<int> indices;
@@ -482,13 +492,17 @@ void pref_growth(int npoints, int size, int dim, float radius, int iterations, m
 };
 
 template<typename T>
-void pref_attach_sweep(int npoints, int size, int dim, float radius, int iterations, mt19937 &mt, int time, bool mode, int measurements=20, float choice1 = 0, float choice2 = 0){
+void pref_attach_sweep(int npoints, int size, int dim, float radius, int iterations, mt19937 &mt, int time, bool mode, int measurements=20, float choice = 0){
     
     vector<vector<int>> coord_list(npoints, vector<int>(Point<T>::Dim));
     vector<int> indices;
     vector<float> weights;
     vector<map<int, int>> mass_list(measurements);
     vector<map<int, int>>::iterator it = mass_list.begin();
+    vector<vector<int>> ammount_clusters(iterations, vector<int>(measurements));
+    vector<vector<int>>::iterator row = ammount_clusters.begin();
+    vector<int>::iterator col;
+    vector<int> rand_vec;
 
     vector<Point<T>> points;
     points.reserve(npoints);
@@ -501,6 +515,7 @@ void pref_attach_sweep(int npoints, int size, int dim, float radius, int iterati
     
     for (int iteration = 0; iteration < iterations; iteration++) {
         it = mass_list.begin();
+        col = row->begin();
 
         cout << '\r' << string(30, ' ') << '\r' << flush;
         cout << iteration << flush;
@@ -509,53 +524,52 @@ void pref_attach_sweep(int npoints, int size, int dim, float radius, int iterati
         gen_init_cond<T, Point>(points, coord_list, npoints, mt, size);
         tree.build(points);
         for (int steps = 0; steps <= time; steps++) {
-
             if (steps != 0  && (steps % (time/measurements)) == 0) {
-                tree.iterate_tree(tree.root_, *it);
+                tree.iterate_tree(tree.root_, *it, &(*col));
                 it++;
+                col++;
             }
-
+            
             gen_rand_nmb<T, Point>(points, rand_idx, mt, mode, should_break);
             if (should_break) break;
             Point<T>& point = points[rand_idx];
-            if (rand(mt) < choice1) {
-                vector<T> coord(Point<T>::Dim);
-                for (int i = 0; i < Point<T>::Dim; i++) {
-                    coord[i] = static_cast<int>(mt() % static_cast<unsigned int>(size));
-                }
-                points.push_back(Point<T>(coord));
-                tree.insert(points.back());
-                point.mass --;
-                continue;
-            } 
-            else {tree.radius_search(point, radius, indices, false);}
+            tree.radius_search(point, radius, indices, false);
             if (indices.size() > 0) {
-                if (rand(mt) < choice2){
-                    uniform_int_distribution<int> dist(0, indices.size() - 1);
-                    vector<int> randVec = {dist(mt)};
-                    tree.gen_rand_point_attach(randVec, weights, point, mt, mode);
+                if (rand(mt) < choice){
+                    rand_vec = {tree.choose_neigh(indices, mt)};
+                    if (rand_vec[0] != -1) {tree.gen_rand_point_attach(rand_vec, weights, point, mt, mode);}
+
                 }
                 else {tree.gen_rand_point_attach(indices, weights, point, mt, mode);}
             }
-            
-
             cout << "\r" << string(30, ' ') << '\r' << flush;
             cout << "\r" << steps/float(time) * 100 << "%" << flush;
         }
+        row++;
         indices.clear();
         weights.clear();
         points.clear();
         tree.clear();
+        rand_vec.clear();
         tree.points_ = &points;
     }
+    std::ostringstream stream;
+    stream << std::fixed << std::setprecision(5) << choice;
+    std::string choice_str = stream.str();
     for (int i = 0; i < int(mass_list.size()); i++) {
-        std::ostringstream stream;
-        stream << std::fixed << std::setprecision(5) << choice2;
-        std::string choice_str = stream.str();
         cout << endl;
         string name = "r" + to_string(int(radius)) + "_" + to_string(int(dim)) + "D_" + "c" +choice_str + "_" + to_string(size) +"_" +to_string((i+1) * time/measurements) +'_'+to_string(npoints/pow(size, dim)) + '_' + to_string(mode) +".txt";
         tree.output(name, mass_list[i], iterations, npoints, radius, size, dim, true);
     }
+    ofstream myfile;
+    myfile.open("/home/sennevw/Thesis/Pref_attach/r"  + to_string(int(radius)) + "_" + to_string(int(dim)) + "D_" + "c" + choice_str + "_" + to_string(size) + "_CLUSTERS_" +to_string(npoints/pow(size, dim)) + '_' + to_string(mode) +".txt");    
+    for(int i = 0; i < int(ammount_clusters.size()); i++){
+        for(int j = 0; j < int(ammount_clusters[i].size()); j++){
+            myfile << ammount_clusters[i][j] << " ";
+        }
+        myfile << endl;
+    }
+    myfile.close();
 };
 
 template <typename T>
@@ -587,7 +601,7 @@ void pref_attach_exact(int npoints, int size, int dim, float radius, int iterati
             cout << "\r" << string(30, ' ') << '\r' << flush;
             cout << "\r" << steps/float(time) * 100 << "%" << flush;
         }
-        tree.iterate_tree(tree.root_, mass_list);
+        tree.iterate_tree(tree.root_, mass_list, nullptr);
         indices.clear();
         weights.clear();
         points.clear();
@@ -677,17 +691,20 @@ int main(){
     mt19937 mt(time(0));
     const unsigned long size = 100;
     const int npoints = 3000;
-    const int time = 80000;
+    const int time = 500000;
     const int dim = 2;
     float radius = 50;
-    int iterations = 50;
-    int measurements = 20;
+    int iterations = 100;
+    int measurements = 25;
     bool mode = true;
     
     if (dim != Point<int>::Dim) throw runtime_error("Dimension mismatch");
     //pref_growth<int>(npoints, size, dim, radius, iterations, mt);
 
-    pref_attach_sweep<int>(npoints, size, dim, radius, iterations, mt , time, mode, measurements, 0, 0.075);
-
+    pref_attach_sweep<int>(npoints, size, dim, radius, iterations, mt , time, mode, measurements, 0.001);
+    pref_attach_sweep<int>(npoints, size, dim, radius, iterations, mt , time, mode, measurements, 0.01);
+    pref_attach_sweep<int>(npoints, size, dim, radius, iterations, mt , time, mode, measurements, 0.1);
+    pref_attach_sweep<int>(npoints, size, dim, radius, iterations, mt , time, mode, measurements, 0.5);
+    pref_attach_sweep<int>(npoints, size, dim, radius, iterations, mt , time, mode, measurements, 1);
     return 1;
 };
