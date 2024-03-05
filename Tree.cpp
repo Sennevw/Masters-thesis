@@ -275,11 +275,15 @@ class Tree{
             return; 
         }
 
-        void iterate_tree(Node* node, map<int, int>& mass_list, int* ammount_clusters=nullptr){
+        void iterate_tree(Node* node, map<int, int>& mass_list, vector<int>& ammount_clusters){
             if (node == nullptr) return;
             ++mass_list[(*points_)[node->idx].mass];
-            if (ammount_clusters != nullptr && (*points_)[node->idx].mass != 0){
-                ++*ammount_clusters;
+            if ((*points_)[node->idx].mass > 0){
+                ++((ammount_clusters)[0]);
+                if ((*points_)[node->idx].mass > 10){ 
+                    ++((ammount_clusters)[1]);
+                    if ((*points_)[node->idx].mass > 100) {++((ammount_clusters)[2]);}
+                }
             }
             iterate_tree(node->left, mass_list, ammount_clusters);
             iterate_tree(node->right, mass_list, ammount_clusters);
@@ -499,9 +503,8 @@ void pref_attach_sweep(int npoints, int size, int dim, float radius, int iterati
     vector<float> weights;
     vector<map<int, int>> mass_list(measurements);
     vector<map<int, int>>::iterator it = mass_list.begin();
-    vector<vector<int>> ammount_clusters(iterations, vector<int>(measurements));
+    vector<vector<int>> ammount_clusters(measurements, vector<int>(3));
     vector<vector<int>>::iterator row = ammount_clusters.begin();
-    vector<int>::iterator col;
     vector<int> rand_vec;
 
     vector<Point<T>> points;
@@ -515,7 +518,6 @@ void pref_attach_sweep(int npoints, int size, int dim, float radius, int iterati
     
     for (int iteration = 0; iteration < iterations; iteration++) {
         it = mass_list.begin();
-        col = row->begin();
 
         cout << '\r' << string(30, ' ') << '\r' << flush;
         cout << iteration << flush;
@@ -525,9 +527,9 @@ void pref_attach_sweep(int npoints, int size, int dim, float radius, int iterati
         tree.build(points);
         for (int steps = 0; steps <= time; steps++) {
             if (steps != 0  && (steps % (time/measurements)) == 0) {
-                tree.iterate_tree(tree.root_, *it, &(*col));
+                tree.iterate_tree(tree.root_, *it, (*row));
                 it++;
-                col++;
+                row++;
             }
             
             gen_rand_nmb<T, Point>(points, rand_idx, mt, mode, should_break);
@@ -538,14 +540,13 @@ void pref_attach_sweep(int npoints, int size, int dim, float radius, int iterati
                 if (rand(mt) < choice){
                     rand_vec = {tree.choose_neigh(indices, mt)};
                     if (rand_vec[0] != -1) {tree.gen_rand_point_attach(rand_vec, weights, point, mt, mode);}
-
                 }
                 else {tree.gen_rand_point_attach(indices, weights, point, mt, mode);}
             }
             cout << "\r" << string(30, ' ') << '\r' << flush;
             cout << "\r" << steps/float(time) * 100 << "%" << flush;
         }
-        row++;
+        row = ammount_clusters.begin();
         indices.clear();
         weights.clear();
         points.clear();
@@ -565,7 +566,7 @@ void pref_attach_sweep(int npoints, int size, int dim, float radius, int iterati
     myfile.open("/home/sennevw/Thesis/Pref_attach/r"  + to_string(int(radius)) + "_" + to_string(int(dim)) + "D_" + "c" + choice_str + "_" + to_string(size) + "_CLUSTERS_" +to_string(npoints/pow(size, dim)) + '_' + to_string(mode) +".txt");    
     for(int i = 0; i < int(ammount_clusters.size()); i++){
         for(int j = 0; j < int(ammount_clusters[i].size()); j++){
-            myfile << ammount_clusters[i][j] << " ";
+            myfile << static_cast<float>(ammount_clusters[i][j])/iterations << " ";
         }
         myfile << endl;
     }
@@ -579,6 +580,8 @@ void pref_attach_exact(int npoints, int size, int dim, float radius, int iterati
     vector<int> indices;
     vector<float> weights;
     map<int, int> mass_list;
+    vector<vector<int>> placeholder1(measurements, vector<int>(3));
+    vector<vector<int>>::iterator placeholder2 = placeholder1.begin();
 
 
     vector<Point<T>> points;
@@ -601,7 +604,7 @@ void pref_attach_exact(int npoints, int size, int dim, float radius, int iterati
             cout << "\r" << string(30, ' ') << '\r' << flush;
             cout << "\r" << steps/float(time) * 100 << "%" << flush;
         }
-        tree.iterate_tree(tree.root_, mass_list, nullptr);
+        tree.iterate_tree(tree.root_, mass_list, *placeholder2);
         indices.clear();
         weights.clear();
         points.clear();
@@ -701,10 +704,9 @@ int main(){
     if (dim != Point<int>::Dim) throw runtime_error("Dimension mismatch");
     //pref_growth<int>(npoints, size, dim, radius, iterations, mt);
 
-    pref_attach_sweep<int>(npoints, size, dim, radius, iterations, mt , time, mode, measurements, 0.001);
-    pref_attach_sweep<int>(npoints, size, dim, radius, iterations, mt , time, mode, measurements, 0.01);
-    pref_attach_sweep<int>(npoints, size, dim, radius, iterations, mt , time, mode, measurements, 0.1);
-    pref_attach_sweep<int>(npoints, size, dim, radius, iterations, mt , time, mode, measurements, 0.5);
-    pref_attach_sweep<int>(npoints, size, dim, radius, iterations, mt , time, mode, measurements, 1);
+    pref_attach_sweep<int>(npoints, size, dim, radius, iterations, mt , time, mode, measurements, 0.15);
+    pref_attach_sweep<int>(npoints, size, dim, radius, iterations, mt , time, mode, measurements, 0.2);
+    pref_attach_sweep<int>(npoints, size, dim, radius, iterations, mt , time, mode, measurements, 0.25);
+    pref_attach_sweep<int>(npoints, size, dim, radius, iterations, mt , time, mode, measurements, 0.3);
     return 1;
 };
