@@ -278,11 +278,13 @@ class Tree{
         void iterate_tree(Node* node, map<int, int>& mass_list, vector<int>& ammount_clusters){
             if (node == nullptr) return;
             ++mass_list[(*points_)[node->idx].mass];
-            if ((*points_)[node->idx].mass > 0){
-                ++((ammount_clusters)[0]);
-                if ((*points_)[node->idx].mass > 10){ 
-                    ++((ammount_clusters)[1]);
-                    if ((*points_)[node->idx].mass > 100) {++((ammount_clusters)[2]);}
+            if (ammount_clusters[0] != -1){
+                if ((*points_)[node->idx].mass > 0){
+                    ++((ammount_clusters)[0]);
+                    if ((*points_)[node->idx].mass > 10){ 
+                        ++((ammount_clusters)[1]);
+                        if ((*points_)[node->idx].mass > 100) {++((ammount_clusters)[2]);}
+                    }
                 }
             }
             iterate_tree(node->left, mass_list, ammount_clusters);
@@ -311,32 +313,32 @@ class Tree{
             for (int j = 0; j < int(indices.size()); j++) {
                     weights.push_back((*points_)[indices[j]].mass/ pow(circ_distance((*points_)[indices[j]], point), Point<T>::Dim  - 1));
                 } 
-                discrete_distribution<int> dist(weights.begin(), weights.end());
-                (*points_)[indices[dist(mt)]].mass ++;
-                (*points_).pop_back();
-                
-                weights.clear();
-                indices.clear();
+            discrete_distribution<int> dist(weights.begin(), weights.end());
+            (*points_)[indices[dist(mt)]].mass ++;
+            (*points_).pop_back();
+            
+            weights.clear();
+            indices.clear();
         }
 
         void gen_rand_point_attach(vector<int>& indices, vector<float>& weights, Point<T>& point, mt19937& mt, bool mode) {
             for (int j = 0; j < int(indices.size()); j++) {
                     weights.push_back((*points_)[indices[j]].mass/ pow(circ_distance((*points_)[indices[j]], point), Point<T>::Dim  - 1));
                 } 
-                discrete_distribution<int> dist(weights.begin(), weights.end());
-                int rand_idx = indices[dist(mt)];
-                if (mode) {
-                    point.mass--;
-                    (*points_)[rand_idx].mass ++;
-                }
+            discrete_distribution<int> dist(weights.begin(), weights.end());
+            int rand_idx = indices[dist(mt)];
+            if (mode) {
+                point.mass--;
+                (*points_)[rand_idx].mass ++;
+            }
 
-                else {
-                    (*points_)[rand_idx].mass += point.mass;
-                    point.mass = 0;
-                }
-                
-                weights.clear();
-                indices.clear();
+            else {
+                (*points_)[rand_idx].mass += point.mass;
+                point.mass = 0;
+            }
+            
+            weights.clear();
+            indices.clear();
         }
 
         void output(string name, map<int, int>& mass_list, int iterations, int npoints, float radius, int size, int dim, bool mode) {
@@ -363,7 +365,7 @@ class Point{
     public:
         vector<T> coords;
         int mass;
-        static const int Dim = 2;
+        static const int Dim = 3;
 
         Point(){};
 
@@ -389,38 +391,38 @@ void create_random_float(vector<vector<T>>& coord_list, int npoints, mt19937& mt
 
 template <class T, template<typename> class Point>
 void create_random_int(vector<vector<T>>& coord_list, int npoints, mt19937& mt, int size){
-            uniform_int_distribution<int> dist_int(0, size-1);
-            for (int i = 0; i < npoints; i++) {
-                for (int j = 0; j < Point<T>::Dim; j++){
-                    coord_list[i][j] = dist_int(mt);
-                }
-            }
+    uniform_int_distribution<int> dist_int(0, size-1);
+    for (int i = 0; i < npoints; i++) {
+        for (int j = 0; j < Point<T>::Dim; j++){
+            coord_list[i][j] = dist_int(mt);
         }
+    }
+}
 
 template <class T, template<typename> class Point>
 void gen_init_cond(vector<Point<T>>& points, vector<vector<T>>& coord_list, int npoints, mt19937& mt, int size) {
-            create_random_int<T, Point>(coord_list, npoints, mt, size);
-            sort(coord_list.begin(), coord_list.end());
-            vector<vector<int>>::iterator it1 = coord_list.begin();
-            vector<vector<int>>::iterator it2 = coord_list.begin() + 1;
-            for (int i = 0; i < npoints; i++){
-                while(it2 != coord_list.end() - 1 && *it2 == *it1) {it2++;}
-                points.push_back(Point<T>(*it1));
-                points.back().mass = distance(it1, it2);
-                
-                if (it2 != coord_list.end() - 1) {
-                    it1 = it2;
-                    it2 = it2 + 1;
-                }
-                else if (it2 == coord_list.end() - 1) {
-                    if (*it2 == *it1) points.back().mass += 1;
-                    else points.push_back(Point<T>(*it2));
-                    break;
-                }
-            }
-            cout << endl;
-            cout << "Points found" << endl;
+    create_random_int<T, Point>(coord_list, npoints, mt, size);
+    sort(coord_list.begin(), coord_list.end());
+    vector<vector<int>>::iterator it1 = coord_list.begin();
+    vector<vector<int>>::iterator it2 = coord_list.begin() + 1;
+    for (int i = 0; i < npoints; i++){
+        while(it2 != coord_list.end() - 1 && *it2 == *it1) {it2++;}
+        points.push_back(Point<T>(*it1));
+        points.back().mass = distance(it1, it2);
+        
+        if (it2 != coord_list.end() - 1) {
+            it1 = it2;
+            it2 = it2 + 1;
         }
+        else if (it2 == coord_list.end() - 1) {
+            if (*it2 == *it1) points.back().mass += 1;
+            else points.push_back(Point<T>(*it2));
+            break;
+        }
+    }
+    cout << endl;
+    cout << "Points found" << endl;
+}
 
 
 template <class T, template<typename> class Point>
@@ -448,49 +450,62 @@ void gen_rand_nmb(vector<Point<T>>& points, int& rand_idx, mt19937& mt, bool& mo
 }
 
 template <typename T>
-void pref_growth(int npoints, int size, int dim, float radius, int iterations, mt19937 &mt, float choice1 = 0, float choice2 = 0, bool mode = false){
+void pref_growth(int npoints, int size, int dim, float radius, int iterations, mt19937 &mt, float choice = 0, bool mode = false){
+    int init_points = 0;
+    if (mode) {
+        init_points = 100;
+    }
+    int add_points = npoints - init_points; 
     vector<Point<T>> points;
     points.reserve(npoints);
     vector<int> indices;
     vector<float> weights;
     Tree<T, Point> tree(points, float(size));
     map<int, int> mass_list;
-    vector<vector<T>> coord_list(npoints, vector<T>(dim));
+    vector<vector<T>> coord_list(init_points, vector<T>(dim));
+    vector<vector<T>> coord_list2(add_points, vector<T>(dim));
     uniform_real_distribution<float> rand(0, 1);
 
     for (int iteration = 0; iteration < iterations; iteration++) {
-        create_random_int<T, Point>(coord_list, npoints, mt, size);  
+        if (mode) {
+            gen_init_cond<T, Point>(points, coord_list, init_points, mt, size);
+            tree.build(points);
+        }
+
+        create_random_int<T, Point>(coord_list2, add_points, mt, size);  
         cout << '\r' << string(30, ' ') << '\r' << flush;     
         cout << iteration << flush;
-        for (int i = 0; i < npoints; i++) {
-            points.push_back(Point<T>(coord_list[i]));
-            if (rand(mt) < choice1) tree.insert(points.back());
-            else if (tree.radius_search(points.back(), radius, indices, true)) {
+        for (int i = 0; i <  add_points; i++) {
+            points.push_back(Point<T>(coord_list2[i]));
+            if (tree.radius_search(points.back(), radius, indices, true)) {
                 if (indices.size() > 0) {
-                    if (rand(mt) < choice2){
-                        tree.gen_rand_point_growth(indices, weights, points.back(), mt);
-                    }
-                    else {
+                    if (rand(mt) < choice){
                         uniform_real_distribution<float> rand_idx(0, indices.size() - 1);
                         points[indices[rand_idx(mt)]].mass ++;
                         points.back().mass = 0;
                         points.pop_back();
-                        indices.clear();                        
+                        indices.clear();    
+                        
+                    }
+                    else {
+                        tree.gen_rand_point_growth(indices, weights, points.back(), mt);             
                     }
                 }
-                else tree.insert(points.back());
+
+            else tree.insert(points.back());
             }
         }
-        tree.iterate_tree(tree.root_, mass_list);
+        vector<int> tempvector = {-1};
+        tree.iterate_tree(tree.root_, mass_list, tempvector);
         tree.clear();
         points.clear();
         tree.points_ = &points;
     }
     std::ostringstream stream;
-    stream << std::fixed << std::setprecision(2) << choice1;
+    stream << std::fixed << std::setprecision(2) << choice;
     std::string choice_str = stream.str();
     cout << endl;
-    string name = to_string(dim) + "D_" + "c" +choice_str + "_r"+to_string(radius) +'_'+to_string(npoints/pow(size, dim))+".txt";
+    string name = to_string(dim) + "D_" + "c" +choice_str + "_r"+to_string(radius) +'_'+to_string(npoints/pow(size, dim))+ '_' +to_string(mode) + ".txt";
     tree.output(name, mass_list, iterations, npoints, radius, size, dim, false);
     
 };
@@ -695,18 +710,16 @@ int main(){
     const unsigned long size = 100;
     const int npoints = 3000;
     const int time = 500000;
-    const int dim = 2;
+    const int dim = 3;
     float radius = 50;
     int iterations = 100;
     int measurements = 25;
-    bool mode = true;
+    bool mode = false;
     
     if (dim != Point<int>::Dim) throw runtime_error("Dimension mismatch");
-    //pref_growth<int>(npoints, size, dim, radius, iterations, mt);
+    
+    pref_attach_sweep<int>(100000, size, dim, 20, 50, mt, 100000, mode, measurements, 0);
 
-    pref_attach_sweep<int>(npoints, size, dim, radius, iterations, mt , time, mode, measurements, 0.15);
-    pref_attach_sweep<int>(npoints, size, dim, radius, iterations, mt , time, mode, measurements, 0.2);
-    pref_attach_sweep<int>(npoints, size, dim, radius, iterations, mt , time, mode, measurements, 0.25);
-    pref_attach_sweep<int>(npoints, size, dim, radius, iterations, mt , time, mode, measurements, 0.3);
+
     return 1;
 };
