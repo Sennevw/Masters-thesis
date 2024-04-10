@@ -365,7 +365,7 @@ class Point{
     public:
         vector<T> coords;
         int mass;
-        static const int Dim = 3;
+        static const int Dim = 2;
 
         Point(){};
 
@@ -453,7 +453,7 @@ template <typename T>
 void pref_growth(int npoints, int size, int dim, float radius, int iterations, mt19937 &mt, float choice = 0, bool mode = false){
     int init_points = 0;
     if (mode) {
-        init_points = 100;
+        init_points = 250;
     }
     int add_points = npoints - init_points; 
     vector<Point<T>> points;
@@ -710,16 +710,14 @@ int main(){
     const unsigned long size = 100;
     const int npoints = 3000;
     const int time = 500000;
-    const int dim = 3;
-    float radius = 50;
-    int iterations = 100;
+    const int dim = 2;
+    float radius = 10;
+    int iterations = 500;
     int measurements = 25;
     bool mode = false;
     
     if (dim != Point<int>::Dim) throw runtime_error("Dimension mismatch");
-    
-    pref_attach_sweep<int>(100000, size, dim, 20, 50, mt, 100000, mode, measurements, 0);
 
-
+    pref_attach_sweep<int>(npoints, size, dim, radius, iterations, mt, time, mode, measurements);  
     return 1;
 };
