@@ -365,7 +365,7 @@ class Point{
     public:
         vector<T> coords;
         int mass;
-        static const int Dim = 2;
+        static const int Dim = 3;
 
         Point(){};
 
@@ -450,12 +450,9 @@ void gen_rand_nmb(vector<Point<T>>& points, int& rand_idx, mt19937& mt, bool& mo
 }
 
 template <typename T>
-void pref_growth(int npoints, int size, int dim, float radius, int iterations, mt19937 &mt, float choice = 0, bool mode = false){
-    int init_points = 0;
-    if (mode) {
-        init_points = 250;
-    }
-    int add_points = npoints - init_points; 
+void pref_growth(int npoints, int size, int dim, float radius, int iterations, mt19937 &mt, float choice = 0, bool mode = false, double init_dens = 0){
+    int init_points = init_dens * pow(size, dim);
+    int add_points = npoints - init_dens * pow(size, dim); 
     vector<Point<T>> points;
     points.reserve(npoints);
     vector<int> indices;
@@ -504,8 +501,11 @@ void pref_growth(int npoints, int size, int dim, float radius, int iterations, m
     std::ostringstream stream;
     stream << std::fixed << std::setprecision(2) << choice;
     std::string choice_str = stream.str();
+    std::ostringstream stream2;
+    stream2 << std::fixed << std::setprecision(4) << init_dens;
+    std::string init_dens_str = stream2.str();
     cout << endl;
-    string name = to_string(dim) + "D_" + "c" +choice_str + "_r"+to_string(radius) +'_'+to_string(npoints/pow(size, dim))+ '_' +to_string(mode) + ".txt";
+    string name = to_string(dim) + "D_" + "c" +choice_str + "_r"+to_string(radius) +'_'+to_string(npoints/pow(size, dim))+ '_' +to_string(mode) + '_' + init_dens_str + ".txt";
     tree.output(name, mass_list, iterations, npoints, radius, size, dim, false);
     
 };
@@ -708,16 +708,20 @@ void pref_attach2(int npoints, int size, int dim, float radius, int iterations, 
 int main(){
     mt19937 mt(time(0));
     const unsigned long size = 100;
-    const int npoints = 3000;
+    const int npoints = 100000;
     const int time = 500000;
-    const int dim = 2;
+    const int dim = 3;
     float radius = 10;
-    int iterations = 500;
+    int iterations = 100;
     int measurements = 25;
-    bool mode = false;
+    bool mode = true;
     
     if (dim != Point<int>::Dim) throw runtime_error("Dimension mismatch");
+    
 
-    pref_attach_sweep<int>(npoints, size, dim, radius, iterations, mt, time, mode, measurements);  
+    pref_growth<int>(npoints, size, dim, radius, iterations, mt, 0.0, mode, 0.1);
+
+
+
     return 1;
 };
